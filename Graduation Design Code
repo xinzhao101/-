@@ -1,0 +1,886 @@
+附录3项目源代码
+串口函数头文件：
+#ifndef SERIAL_H
+#define SERIAL_H
+#include <Windows.h>
+#include <string>
+#include <QObject>
+
+class serial : public QObject {
+    Q_OBJECT
+public:
+    struct SerialOptions {
+        std::string serialname;
+        DWORD       BaudRate;
+        DWORD       ByteSize;
+        DWORD       Parity;
+        DWORD       StopBits;
+    };
+    serial(std::string comname,
+        DWORD       BaudRate);
+    struct SerialOptions serialoptions;
+
+    static const SerialOptions defaultoptions;
+    bool is_open();
+    bool openPort();
+
+    int readFromPort(void *buff, DWORD size, unsigned int timeout);
+
+    bool writeToPort(const void *buff, DWORD size, unsigned int timeout);
+
+    bool closePort();
+
+private:
+    DCB _serialoptions;
+    bool serialstatus;
+    HANDLE _hcom;
+};
+#endif // SERIAL_H
+
+线程函数头文件：
+#ifndef THREADSERIAL_H
+#define THREADSERIAL_H
+#include<QException>
+#include<QTimer>
+#include <iostream>
+#include <QSerialPort>
+#include <QDebug>
+#include <QObject>
+#include <QThread>
+
+class ThreadSerial : public QObject {
+    Q_OBJECT
+public:
+    explicit ThreadSerial(QObject *parent = nullptr);
+    ~ThreadSerial();
+    void init_port();
+signals:
+    void start(int);
+public slots:
+    void handle_data();
+    void write_data(QString str);
+signals:
+    void receive_data(QString tmp);
+private:
+     QThread *my_thread;
+     QSerialPort *port;
+};
+
+#endif // THREADSERIAL_H
+所有下位机代码：
+/**************************************************/
+下位机主函数部分
+/**************************************************/
+#include <Servo.h>
+#include "libary.h"
+
+libary libary1;
+int val1;     
+
+void setup(){
+  Serial.begin(9600); 
+  Serial.println("Welcome to the world of bionic manipulator");
+
+  libary1.first_finger.attach(2);
+  delay(200);
+  libary1.second_finger.attach(3);
+  delay(200);
+  libary1.third_finger.attach(4);
+  delay(200);
+  libary1.forth_finger.attach(5);
+  delay(200);
+  libary1.fifth_finger.attach(6);
+  delay(200);
+
+  libary1.first_finger.write(120); 
+  delay(10);
+  libary1.second_finger.write(120); 
+  delay(10);
+  libary1.third_finger.write(120); 
+  delay(10);
+  libary1.forth_finger.write(120);  
+  delay(10);
+  libary1.fifth_finger.write(120);  
+  delay(10);  
+}
+
+void loop(){
+  if (Serial.available()>0) {  
+
+  char serialCmd = Serial.read();
+  if( libary1.mode == 1 ){
+     val1=analogRead(A0);
+  val1=map(val1,0,1023,0,333);
+     libary1.fingerDataCmd(serialCmd);
+     Serial.print("Value is : ");
+     Serial.println(val1);
+  } 
+else {
+        val1=analogRead(A0);
+        val1=map(val1,0,1023,0,333);
+        libary1.fingerJoyCmd(serialCmd);
+        Serial.print("Value is : ");
+        Serial.println(val1);
+      }
+  }
+}
+/*********************************/
+下位机调用函数
+/*********************************/
+#include "libary.h"
+
+void libary::sensor1(){
+val1=analogRead(A0);
+val1=map(val1,0,1023,0,333);
+delay(500);
+Serial.println(val1);
+}
+
+void libary::reset(){ 
+  first_finger.write(0); 
+  second_finger.write(0); 
+  third_finger.write(0); 
+  forth_finger.write(0);  
+  fifth_finger.write(0); 
+}
+void libary::dongzuo1(){
+  third_finger.write(180); 
+  forth_finger.write(180);
+  fifth_finger.write(180);  
+  delay(1000);
+  first_finger.write(180);  
+}
+
+void libary::dongzuo2(){
+  forth_finger.write(180);  
+  fifth_finger.write(180);
+  delay(1000);
+  first_finger.write(180); 
+}
+
+void libary::dongzuo3(){
+  first_finger.write(180);
+  delay(1000);
+  second_finger.write(180);
+}
+
+void libary::dongzuo4(){
+   first_finger.write(180);
+}
+
+void libary::dongzuo5(){
+   first_finger.write(180);
+   second_finger.write(180); 
+   forth_finger.write(180);  
+   fifth_finger.write(180);
+   delay(1000);
+   third_finger.write(0);
+}
+
+void libary::dongzuo6(){
+   first_finger.write(0);
+   second_finger.write(0);
+   third_finger.write(180); 
+   forth_finger.write(180);  
+   fifth_finger.write(0);
+}
+
+void libary::fingerIniPos2(){
+  second_finger.write(180); 
+  third_finger.write(180); 
+  forth_finger.write(180);  
+  fifth_finger.write(180);
+  delay(300);
+  first_finger.write(180);
+}
+void libary::fingerIniPos(){
+  Serial.println("+Command: Restore Initial Position.");
+  int robotIniPosArray[5][3] = {
+    {'a', 0, DSD},
+    {'b', 0, DSD},
+    {'c', 0, DSD},
+    {'d', 0, DSD},
+    {'e', 0, DSD}
+  };
+
+  for (int i = 0; i < 5; i++){
+    servoCmd(robotIniPosArray[i][0], robotIniPosArray[i][1], robotIniPosArray[i][2]);
+    delay(500);
+  }
+   delay(500);
+   first_finger.write(0);
+   second_finger.write(180);
+   third_finger.write(180); 
+   forth_finger.write(180);  
+   fifth_finger.write(0);
+   delay(1000);
+   first_finger.write(0);
+   second_finger.write(0);
+   third_finger.write(180); 
+   forth_finger.write(180);  
+   fifth_finger.write(0);
+}
+
+void libary::fingerIniPos1(){
+  Serial.println("+Command: Restore Initial Position.");
+  int robotIniPosArray[10][3] = {
+    {'a', 90, DSD},
+    {'b', 90, DSD},
+    {'c', 90, DSD},
+    {'d', 90, DSD},
+    {'e', 90, DSD},
+    {'a', 0, DSD},
+    {'b', 0, DSD},
+    {'c', 0, DSD},
+    {'d', 0, DSD}, 
+    {'e', 0, DSD}
+  };
+  for (int i = 0; i < 10; i++){
+    servoCmd(robotIniPosArray[i][0], robotIniPosArray[i][1], robotIniPosArray[i][2]);
+  }
+}
+void libary::reportStatus(){
+  Serial.println("");
+  Serial.println("");
+  Serial.println("+ Robot-Arm Status Report +");
+  Serial.print("first_finger Position: "); Serial.println(first_finger.read());
+  Serial.print("second_finger Position: "); Serial.println(second_finger.read());
+  Serial.print("third_finger Position:"); Serial.println(third_finger.read());
+  Serial.print("forth_finger Position:"); Serial.println(forth_finger.read());
+  Serial.print("fifth_finger Position:"); Serial.println(fifth_finger.read());
+  Serial.println("++++++++++++++++++++++++++");
+  Serial.println("");
+}
+
+void libary::servoCmd(char servoName, int toPos, int servoDelay){  
+  Serial.println("");
+  Serial.print("+Command: Servo ");
+  Serial.print(servoName);
+  Serial.print(" to ");
+  Serial.print(toPos);
+  Serial.print(" at servoDelay value ");
+  Serial.print(servoDelay);
+  Serial.println(".");
+  Serial.println("");
+
+  int fromPos;
+
+  switch(servoName){
+    case 'a':
+      if(toPos >= 0 && toPos <= 180){
+        servomove = first_finger;
+        fromPos = first_finger.read();
+        break;
+      } else {
+        Serial.println("+Warning: first_finger Servo Value Out Of Limit!");
+        return;
+      }
+
+    case 'b':
+      if(toPos >= 0 && toPos <= 180){    
+        servomove = second_finger;
+        fromPos =second_finger.read();
+        break;
+      } else {
+        Serial.println("+Warning: second_finger Servo Value Out Of Limit!");
+        return;        
+      }
+
+    case 'c':
+      if(toPos >= 0 && toPos <= 180){
+        servomove = third_finger;
+        fromPos = third_finger.read();
+        break;
+      } else {
+        Serial.println("+Warning: third_finger Servo Value Out Of Limit!");
+        return;
+      }
+
+    case 'd':
+      if(toPos >=0 && toPos <=180){
+        servomove = forth_finger;
+        fromPos = forth_finger.read();
+        break;
+      } else {
+        Serial.println("+Warning: forth_finger Servo Value Out Of Limit!");
+        return;
+      } 
+
+      case 'e':
+      if(toPos >= 0 && toPos <= 180){
+        servomove = fifth_finger;
+        fromPos = fifth_finger.read();
+        break;
+      } else {
+        Serial.println("+Warning: fifth_fingerActpos Servo Value Out Of Limit!");
+        return;
+      }           
+  }
+
+  if (fromPos <= toPos){
+    for (int i=fromPos; i<=toPos; i++){
+      servomove.write(i);
+      delay (servoDelay);
+    }
+  }  else {
+    for (int i=fromPos; i>=toPos; i--){
+      servomove.write(i);
+      delay (servoDelay);
+    }
+  }
+}
+
+void libary:: fingerDataCmd(char serialCmd){
+  if ( serialCmd == '1' || serialCmd == '2' || serialCmd == '3' || serialCmd == '4' 
+      || serialCmd == '5' || serialCmd == '6' || serialCmd == '7' || serialCmd == '8'
+     || serialCmd == '9'|| serialCmd == '0' ){
+    Serial.println("+Warning: Robot in Instruction Mode..."); 
+    delay(100);
+while(Serial.available()>0) char wrongCommand = Serial.read();
+return;
+  } 
+
+  if (serialCmd == 'a' || serialCmd == 'b' || serialCmd == 'c' || serialCmd == 'd'|| serialCmd == 'e'){
+    int servoData = Serial.parseInt();
+    servoCmd(serialCmd, servoData, DSD);
+  } else {
+    switch(serialCmd){   
+
+      case 'm' : 
+        mode = 0; 
+        Serial.println("Command: Switch to Joy-Stick Mode.");
+        break;
+
+      case 'o':
+        reportStatus();
+        break;
+
+      case 'i':
+        fingerIniPos();  
+        break;
+
+      case 'v':
+        reset();
+        break;
+
+      case'p':
+        fingerIniPos1();
+        break;
+
+      case'q':
+        fingerIniPos2();
+        break;
+
+      case'r':
+        dongzuo1();
+        break;
+
+      case's':
+        dongzuo2();
+        break;
+
+      case't':
+        dongzuo3();
+        break;
+
+      case'u':
+        dongzuo4();      
+        break;
+
+      case'w':
+        dongzuo5();      
+        break;
+
+        case'x':
+
+        dongzuo6();      
+        break;
+
+      default:
+        Serial.println("Unknown Command.");
+    }
+  }  
+}
+
+void libary::fingerJoyCmd(char serialCmd){ 
+  if (serialCmd == 'a' || serialCmd == 'b' || serialCmd == 'c' || serialCmd == 'd'|| serialCmd == 'e'){
+    Serial.println("+Warning: finger in Joy-Stick Mode...");
+    delay(100);
+    while(Serial.available()>0) char wrongCommand = Serial.read();
+    return;
+  } 
+  switch(serialCmd){
+    case '1':
+      Serial.println("Received Command:first_finger up");                
+      first_fingerActpos = first_finger.read() - moveStep;
+      servoCmd('a', first_fingerActpos, DSD);
+      break;  
+
+    case '2':
+      Serial.println("Received Command: first_finger down");                
+      first_fingerActpos = first_finger.read() + moveStep;
+      servoCmd('a', first_fingerActpos, DSD);
+      break;        
+
+    case '3':
+    Serial.println("Received Command:second_finger up");                
+      second_fingerActpos = second_finger.read() + moveStep;
+      servoCmd('b', second_fingerActpos, DSD);
+      break;  
+
+    case '4':
+      Serial.println("Received Command: second_finger down");     
+      second_fingerActpos = second_finger.read() - moveStep;
+      servoCmd('b',second_fingerActpos, DSD);
+      break;  
+
+    case '5':
+      Serial.println("Received Command: third_finger up");        
+      third_fingerActpos = third_finger.read() + moveStep;
+      servoCmd('c', third_fingerActpos, DSD);
+      break;  
+
+    case '6':
+      Serial.println("Received Command: third_finger down");        
+      third_fingerActpos = third_finger.read() - moveStep;
+      servoCmd('c', third_fingerActpos, DSD);
+      break;  
+
+    case '7':
+      Serial.println("Received Command: forth_finger up");        
+      forth_fingerActpos = forth_finger.read() + moveStep;
+      servoCmd('d', forth_fingerActpos, DSD);
+      break;  
+
+    case '8':
+      Serial.println("Received Command: forth_finger down");     
+      forth_fingerActpos = forth_finger.read() - moveStep;
+      servoCmd('d', forth_fingerActpos, DSD);
+      break;
+
+     case '9':
+      Serial.println("Received Command: fifth_finger up");     
+      fifth_fingerActpos = fifth_finger.read() - moveStep;
+      servoCmd('e', fifth_fingerActpos, DSD);
+      break; 
+
+     case '0':
+      Serial.println("Received Command: fifth_finger down");     
+      fifth_fingerActpos = fifth_finger.read() - moveStep;
+      servoCmd('e', fifth_fingerActpos, DSD);
+      break; 
+
+    case 'm' :
+      mode = 1; 
+      Serial.println("Command: Switch to Instruction Mode.");
+      break;
+
+    case 'o':  
+      reportStatus();
+      break;
+
+    case 'v':
+        reset();
+        break;
+
+    default:
+      Serial.println("Unknown Command.");
+      return;
+  }  
+}
+ /*********************************/
+下位机头文件:
+/*********************************/
+#ifndef  LIBARY_H
+#define LIBARY_H
+#include <Servo.h>
+#include <Arduino.h>
+
+class libary {   
+public:
+  int first_fingerActpos;
+  int second_fingerActpos;
+  int third_fingerActpos;
+  int forth_fingerActpos;
+  int fifth_fingerActpos;
+  int fromPos;
+  int DSD = 3; 
+  bool mode;
+  int moveStep = 3;
+  int val1;
+Servo first_finger,second_finger,third_finger,forth_finger,fifth_finger; 
+Servo servomove;
+
+void servoCmd(char servoName, int toPos, int servoDelay);
+void reportStatus();
+void fingerJoyCmd(char serialCmd);
+void fingerDataCmd(char serialCmd);
+void fingerIniPos();
+void fingerIniPos1();
+void fingerIniPos2();
+void dongzuo1();
+void dongzuo2();
+void dongzuo3();
+void dongzuo4();
+void dongzuo5();
+void dongzuo6();
+void reset();
+void sensor1();
+};
+#endif
+上位机部分代码:
+/************************************/
+//上位机主函数:
+/************************************/
+#include "mainwindow.h"
+#include <QApplication>
+
+int main(int argc, char *argv[])
+{
+    QApplication a(argc, argv);
+    MainWindow w;
+    w.show();
+    return a.exec();
+}
+/************************************/
+//界面映射函数
+/************************************/
+#include "mainwindow.h"
+#include "ui_mainwindow.h"
+
+MainWindow::MainWindow(QWidget *parent)
+    : QMainWindow(parent)
+    , ui(new Ui::MainWindow)
+{
+    ui->setupUi(this);
+    ui->comboBox->addItems(QStringList("Action1")); 
+    ui->comboBox->addItems(QStringList("Action2"));
+    ui->comboBox->addItems(QStringList("Action3"));
+    ui->comboBox->addItems(QStringList("Action4"));
+    ui->comboBox->addItems(QStringList("Action5"));
+   connect(ui->horizontalSlider_2,&QSlider::valueChanged,this,&MainWindow::readyToWrite);
+connect(this,&MainWindow::_sendData,threadserial_,&ThreadSerial::write_data); connect(threadserial_,&ThreadSerial::receive_data,ui->textBrowser,&QTextBrowser::insertPlainText);
+void(QComboBox:: * indexChanged)(int) = &QComboBox::currentIndexChanged;
+connect(ui->comboBox,indexChanged,this,&MainWindow::changS);  connect(ui->horizontalSlider_2,&QSlider::valueChanged,this,&MainWindow::sliderChange);
+}
+
+MainWindow::~MainWindow()
+{
+    delete ui;
+}
+
+void MainWindow::changS(int value)
+{
+    if(value == 0){
+        s="r";
+    }else if(value == 1){
+         s="q";
+    }else if(value == 2){
+        s="s";
+   }else if(value == 3){
+        s="t";
+   }else if(value == 4){
+        s="i";
+   }
+}
+void MainWindow::readyToWrite(int value)
+{
+    s.append("a");
+    s +=  QString::number(value);
+    emit _sendData(s);
+    s.clear();
+}
+
+void MainWindow::readyToWrite2(int value)
+{
+    s.append("b");
+    s +=  QString::number(value);
+    emit _sendData(s);
+    s.clear();
+}
+
+void MainWindow::on_pushButton_8_clicked()
+{
+    threadserial_->write_data("v");
+}
+
+void MainWindow::on_pushButton_9_clicked()
+{
+     threadserial_->write_data("m");
+}
+
+void MainWindow::on_finger1up_clicked()
+{
+        threadserial_->write_data("1");
+}
+
+void MainWindow::on_finger1down_clicked()
+{
+    threadserial_->write_data("2");
+}
+
+void MainWindow::on_finger2up_clicked()
+{
+    threadserial_->write_data("3");
+}
+
+void MainWindow::on_finger2down_clicked()
+{
+    threadserial_->write_data("4");
+}
+
+void MainWindow::on_finger3up_clicked()
+{
+    threadserial_->write_data("5");
+}
+
+void MainWindow::on_finger3down_clicked()
+{
+    threadserial_->write_data("6");
+}
+
+void MainWindow::on_finger4up_clicked()
+{
+    threadserial_->write_data("7");
+}
+
+void MainWindow::on_finger4down_clicked()
+{
+    threadserial_->write_data("8");
+}
+
+void MainWindow::on_pushButton_25_clicked()
+{
+    threadserial_->write_data("9");
+}
+
+void MainWindow::on_finger5down_clicked()
+{
+    threadserial_->write_data("0");
+}
+
+void MainWindow::on_pushButton_7_clicked()
+{
+     threadserial_->write_data(ui->textEdit_2->toPlainText().toLocal8Bit());
+     ui->textEdit_2->clear();
+}
+
+void MainWindow::on_pushButton_13_clicked()
+{
+    ui->textBrowser->clear();
+}
+
+void MainWindow::on_pushButton_10_clicked()
+{
+    threadserial_->write_data(s);
+}
+
+void MainWindow::sliderChange(int value)
+{
+    QString str = QString::number(value);
+    ui->label->setText(str);
+}
+/************************************/
+//串口函数
+/************************************/
+#include "serial.h"
+#include <iostream>
+using namespace std;
+
+const serial::SerialOptions serial::defaultoptions =
+{
+    "COM6",
+    9600,
+    8,
+    NOPARITY,
+    ONESTOPBIT,
+};
+
+serial::serial(std::string comname, DWORD  BaudRate)
+{
+    serialoptions = defaultoptions;
+    serialoptions.serialname = comname;
+    serialoptions.BaudRate = BaudRate;
+    serialstatus = openPort();
+}
+
+bool serial::openPort()
+{
+    std::string com_port = "\\\\.\\" + serialoptions.serialname;
+    _hcom = CreateFileA (
+        com_port.c_str(),
+        GENERIC_READ | GENERIC_WRITE,
+        0,
+        NULL,
+        OPEN_EXISTING,
+        FILE_ATTRIBUTE_NORMAL,
+        NULL
+            );
+    if (_hcom == INVALID_HANDLE_VALUE)
+    {
+        std::cout << "CreateFile false" << endl;
+        return false;
+    }
+    SetupComm(_hcom, 8, 8);
+    COMMTIMEOUTS TimeOuts;
+
+    TimeOuts.ReadTotalTimeoutConstant = 200;
+    TimeOuts.WriteTotalTimeoutMultiplier = 500;
+    TimeOuts.WriteTotalTimeoutConstant = 2000;
+
+    if (SetCommTimeouts(_hcom, &TimeOuts) == false)
+    {
+        std::cout << "SetCommTimeouts false" << endl;
+        return false;
+    }
+
+    if (GetCommState(_hcom, &_serialoptions) == false)
+    {
+        std::cout << "GetCommState false" << endl;
+        return false;
+    }
+
+    _serialoptions.BaudRate = serialoptions.BaudRate;
+    _serialoptions.ByteSize = serialoptions.ByteSize;
+    _serialoptions.Parity = serialoptions.Parity;
+    _serialoptions.StopBits = serialoptions.StopBits;
+
+    if (SetCommState(_hcom, &_serialoptions) == false)
+    {
+        std::cout << "SetCommState false" << endl;
+        return false;
+    }
+
+    if (PurgeComm(_hcom, PURGE_TXCLEAR | PURGE_RXCLEAR) == false)
+    {
+        std::cout << "PurgeComm false" << endl;
+        return false;
+    }
+    return true;
+}
+
+int serial::readFromPort(void *buff, DWORD size, unsigned int timeout)
+{
+    COMMTIMEOUTS readCommTimeOuts;
+
+    memset(&readCommTimeOuts, 0, sizeof(readCommTimeOuts));
+    readCommTimeOuts.ReadTotalTimeoutConstant = timeout;
+    SetCommTimeouts(_hcom, &readCommTimeOuts);
+    DWORD dwReadBytes = 0;
+
+    if (ReadFile(_hcom, buff, size, &dwReadBytes, NULL))
+    {
+        return dwReadBytes;
+    }
+    else
+    {
+        std::cout << "ReadFile false" << endl;
+        return -1;
+    }
+}
+
+bool serial::writeToPort(const void *buff, DWORD size, unsigned int timeout)
+{
+    COMMTIMEOUTS writeCommTimeOuts;
+
+    memset(&writeCommTimeOuts, 0, sizeof(writeCommTimeOuts));
+    writeCommTimeOuts.WriteTotalTimeoutConstant = timeout;
+    SetCommTimeouts(_hcom, &writeCommTimeOuts);
+    DWORD dwWriteBytes = 0;
+
+    if (WriteFile(_hcom, buff, size, &dwWriteBytes, NULL))
+    {
+        return true;
+    }
+    else
+    {
+        std::cout << "ReadFile false" << endl;
+        return false;
+    }
+}
+
+bool serial::closePort()
+{
+    if (_hcom != INVALID_HANDLE_VALUE)
+    {
+        return CloseHandle(_hcom);
+    }
+    return false;
+}
+
+bool serial::is_open()
+{
+    return serialstatus;
+}
+/************************************/
+//线程函数
+/************************************/
+#include "threadserial.h"
+ThreadSerial::ThreadSerial(QObject *parent) : QObject(parent)
+{
+    my_thread  = new QThread();
+    port = new QSerialPort();
+    init_port();
+    this->moveToThread(my_thread);
+    port->moveToThread(my_thread);
+    my_thread->start(); 
+}
+
+ThreadSerial::~ThreadSerial()
+{
+    port->close();
+    port->deleteLater();
+    my_thread->quit();
+    my_thread->wait();
+    my_thread->deleteLater();
+}
+
+void ThreadSerial::init_port()
+{
+    port->setPortName("COM8");
+
+    port->setBaudRate(QSerialPort::Baud9600);
+
+    port->setDataBits(QSerialPort::Data8);
+
+    port->setStopBits(QSerialPort::OneStop);
+
+    port->setParity(QSerialPort::NoParity);
+
+    port->setFlowControl(QSerialPort::NoFlowControl);
+
+    if (port->open(QIODevice::ReadWrite))
+    {
+         std::cout << "Port have been Fucking opened"<<std::endl;
+    }
+
+    else
+    {
+        std::cout << "open it failed" << endl;
+    }
+
+    connect(port, SIGNAL(readyRead()), this,SLOT(handle_data()),Qt::QueuedConnection);
+}
+
+void ThreadSerial::handle_data()
+{
+    QString  data = port->readAll();
+std::cout<<"--------------------------------------------------------------------------"<<std::endl;
+    std::cout << "Reciv data ->" << data.toStdString()<<std::endl;
+    std::cout << "handing thread is:" << QThread::currentThreadId()<<std::endl;
+std::cout<<"--------------------------------------------------------------------------"<<std::endl;
+    emit receive_data(data);
+}
+
+void ThreadSerial::write_data(QString str)
+{
+    std:: cout <<"********************************************************"<<std::endl;
+    std::cout << "write_id is:" << QThread::currentThreadId() << std::endl;
+    try {
+         port->write(str.toUtf8());
+    } catch (QException e) {
+        e.what();
+    }
+     std::cout << "send Done ! The string is " << str.toStdString() << '\n';
+     std:: cout <<"********************************************************"<<std::endl;
+}
